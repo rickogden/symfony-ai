@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /*
  * This file is part of the Symfony package.
  *
@@ -24,6 +22,7 @@ use Doctrine\DBAL\Types\JsonType;
 use Doctrine\DBAL\Types\VectorType;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\AI\Store\Exception\InvalidArgumentException;
 use Symfony\AI\Store\ManagedStoreInterface;
 use Symfony\AI\Store\StoreInterface;
 
@@ -44,7 +43,7 @@ final readonly class Store implements StoreInterface, ManagedStoreInterface
     {
         $dimensions = $options['dimensions'] ?? 1536;
         if (!\is_int($dimensions)) {
-            throw new \InvalidArgumentException('The "dimensions" option must be an integer.');
+            throw new InvalidArgumentException('The "dimensions" option must be an integer.');
         }
 
         $table = new Table(
