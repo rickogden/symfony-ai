@@ -3,6 +3,8 @@
 namespace Symfony\AI\Store\Tests\Bridge\Doctrine;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Schema\Index\IndexType;
 use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use Doctrine\DBAL\Schema\Table;
@@ -12,13 +14,18 @@ use Doctrine\DBAL\Types\VectorType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Bridge\Doctrine\Store;
+use Symfony\AI\Store\Document\Metadata;
+use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\Component\Uid\Uuid;
 
 #[CoversClass(Store::class)]
 final class StoreTest extends TestCase
 {
     private Connection&MockObject $connection;
     private Store $store;
+
     protected function setUp(): void
     {
         $this->connection = $this->createMock(Connection::class);
@@ -58,7 +65,7 @@ final class StoreTest extends TestCase
 
                 $columns = $table->getPrimaryKeyConstraint()->getColumnNames();
                 self::assertCount(1, $columns);
-                self::assertSame('id', $columns[0]->toString());;
+                self::assertSame('id', $columns[0]->toString());
 
                 return true;
             }))
@@ -79,5 +86,48 @@ final class StoreTest extends TestCase
             ->with('table_name')
         ;
         $this->store->drop();
+    }
+
+    public function testAdd(): void
+    {
+        $document1 = new VectorDocument(
+            Uuid::v4(),
+            new Vector([0.1, 0.2, 0.3]),
+            new Metadata(['title' => 'Document 1', 'content' => 'First document content']),
+        );
+        $document2 = new VectorDocument(
+            Uuid::v4(),
+            new Vector([0.4, 0.5]),
+            new Metadata(['title' => 'Document 2', 'content' => 'Second document content']),
+        );
+        $this->connection->expects($this->once())
+            ->method('createQueryBuilder')
+            ->willReturn(new QueryBuilder($this->connection))
+        ;
+        $paramArray = [];
+        $this->connection->expects($this->exactly(2))
+            ->method('executeStatement')
+            ->willReturnCallback(function (string $sql, array $params, array $types) use (&$paramArray): int {
+                self::assertSame(
+                    'INSERT INTO table_name (id, metadata, vector_field) VALUES(:id, :metadata, :vector)',
+                    $sql,
+                );
+                $paramArray[] = $params;
+                self::assertSame(['id' => ParameterType::BINARY, 'metadata' => 'json', 'vector' => 'vector'], $types);
+
+                return 1;
+            })
+        ;
+
+        $this->store->add($document1, $document2);
+        self::assertCount(2, $paramArray);
+        self::assertCount(3, $paramArray[0]);
+        self::assertCount(3, $paramArray[1]);
+        self::assertSame($document1->id->toBinary(), $paramArray[0]['id']);
+        self::assertSame($document1->metadata->getArrayCopy(), $paramArray[0]['metadata']);
+        self::assertSame($document1->vector->getData(), $paramArray[0]['vector']);
+        self::assertSame($document2->id->toBinary(), $paramArray[1]['id']);
+        self::assertSame($document2->metadata->getArrayCopy(), $paramArray[1]['metadata']);
+        self::assertSame($document2->vector->getData(), $paramArray[1]['vector']);
     }
 }
