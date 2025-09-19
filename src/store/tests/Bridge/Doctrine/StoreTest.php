@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Symfony\AI\Store\Tests\Bridge\Doctrine;
 
 use Doctrine\DBAL\Connection;
@@ -29,6 +38,10 @@ final class StoreTest extends TestCase
 
     protected function setUp(): void
     {
+        if (!class_exists('Doctrine\DBAL\Connection')) {
+            $this->markTestSkipped('Doctrine DBAL is not installed.');
+        }
+
         $this->connection = $this->createMock(Connection::class);
         $this->store = new Store(
             $this->connection,
@@ -126,14 +139,14 @@ final class StoreTest extends TestCase
         ;
 
         $this->store->add($document1, $document2);
-        self::assertCount(2, $paramArray);
-        self::assertCount(3, $paramArray[0]);
-        self::assertCount(3, $paramArray[1]);
-        self::assertSame($document1->id->toBinary(), $paramArray[0]['id']);
-        self::assertSame($document1->metadata->getArrayCopy(), $paramArray[0]['metadata']);
-        self::assertSame($document1->vector->getData(), $paramArray[0]['vector']);
-        self::assertSame($document2->id->toBinary(), $paramArray[1]['id']);
-        self::assertSame($document2->metadata->getArrayCopy(), $paramArray[1]['metadata']);
-        self::assertSame($document2->vector->getData(), $paramArray[1]['vector']);
+        $this->assertCount(2, $paramArray);
+        $this->assertCount(3, $paramArray[0]);
+        $this->assertCount(3, $paramArray[1]);
+        $this->assertSame($document1->id->toBinary(), $paramArray[0]['id']);
+        $this->assertSame($document1->metadata->getArrayCopy(), $paramArray[0]['metadata']);
+        $this->assertSame($document1->vector->getData(), $paramArray[0]['vector']);
+        $this->assertSame($document2->id->toBinary(), $paramArray[1]['id']);
+        $this->assertSame($document2->metadata->getArrayCopy(), $paramArray[1]['metadata']);
+        $this->assertSame($document2->vector->getData(), $paramArray[1]['vector']);
     }
 }
