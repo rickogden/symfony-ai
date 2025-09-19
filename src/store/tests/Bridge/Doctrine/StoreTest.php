@@ -4,6 +4,7 @@ namespace Symfony\AI\Store\Tests\Bridge\Doctrine;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Platforms\MariaDB110700Platform;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Schema\Index\IndexType;
 use Doctrine\DBAL\Schema\MySQLSchemaManager;
@@ -43,6 +44,11 @@ final class StoreTest extends TestCase
         $this->connection->expects($this->once())
             ->method('createSchemaManager')
             ->willReturn($schemaManager)
+        ;
+
+        $this->connection->expects($this->once())
+            ->method('getDatabasePlatform')
+            ->willReturn(new MariaDB110700Platform())
         ;
 
         $schemaManager->expects($this->once())
